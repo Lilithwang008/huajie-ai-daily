@@ -1,0 +1,13 @@
+# 本地工作数据，不发布
+.workbuddy/
+
+# 临时校验产物
+_*.png
+_*.html
+_*.js
+_syntax*.js
+
+# 系统文件
+Thumbs.db
+.DS_Store
+desktop.ini
