@@ -49,6 +49,20 @@ FEED.days.unshift({
 | `build_logo.py` | 头像留白缩放 + 压缩 + 内嵌回 `index.html` |
 | `build_favicon.py` | 生成 32/64/180 三档 favicon 并写入 `<head>` |
 
+## 发布
+
+改完 `index.html` 后执行：
+
+```bash
+python publish.py "本次改动说明"
+```
+
+脚本会用 GitHub API 建 blob / tree / commit 并更新 `main`，约 10 秒后 Pages 自动重新构建。
+
+**为什么不用 `git push`**：本机网络代理只放行 `api.github.com`，`github.com` 的 git 协议（`git-upload-pack`）会超时。`publish.py` 走 REST API，同一套凭据更稳。
+
+本地 `git` 只用来记录「哪些文件要发布」（`git ls-files` 决定上传清单，`.gitignore` 里排除的东西不会上传），本地提交历史与远端不必同步。
+
 ## 说明
 
 页面为静态站点，所有数据硬编码在文件内，不采集任何用户数据。
