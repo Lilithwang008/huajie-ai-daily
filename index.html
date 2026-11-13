@@ -142,6 +142,37 @@ h1.title .owner{color:var(--accent);display:inline-block;transform:rotate(-1.2de
 
 /* ============ 卡片 ============ */
 .feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:26px 24px}
+/* 条目数不是列数整数倍时，补一张「本期说明卡」填满最后一行，不留空块 */
+.card-fill{
+  position:relative;display:flex;flex-direction:column;gap:10px;
+  min-height:236px;padding:24px 22px 20px;overflow:hidden;
+  border:2px dashed var(--line);
+  border-radius:16px 7px 14px 8px / 8px 15px 7px 16px;
+  background:linear-gradient(135deg,rgba(255,224,102,.15),rgba(255,224,102,.03));
+}
+.cf-tag{
+  align-self:flex-start;font:700 11px/1 var(--hand);letter-spacing:2px;
+  color:var(--accent);border:1px solid var(--accent);border-radius:6px;
+  padding:5px 9px;transform:rotate(-1.5deg);
+}
+.cf-title{font:700 18px/1.45 var(--hand);color:var(--ink-2)}
+.card-fill p{font-size:13px;line-height:1.85;color:var(--ink-3);margin:0}
+.cf-rule{height:1px;background:var(--line);margin:4px 0}
+.cf-foot{margin-top:auto;font-size:11.5px;line-height:1.95;color:var(--ink-3)}
+.cf-mark{
+  position:absolute;right:18px;bottom:14px;width:34px;height:34px;
+  border:2px solid var(--accent);border-radius:50% 40% 55% 45%;
+  opacity:.22;transform:rotate(14deg);pointer-events:none;
+}
+.cf-mark::after{
+  content:"";position:absolute;inset:9px;border:2px solid var(--accent);border-radius:50%;
+}
+body[data-theme="tech"] .card-fill{background:rgba(255,255,255,.022);border-color:rgba(79,209,255,.24)}
+body[data-theme="tech"] .cf-title{color:#A9C2E0}
+body[data-theme="tech"] .card-fill p,
+body[data-theme="tech"] .cf-foot{color:#8FA8C8}
+body[data-theme="tech"] .cf-tag{border-color:rgba(79,209,255,.45);color:#8FD8FF}
+body[data-theme="tech"] .cf-mark{border-color:rgba(79,209,255,.5)}
 .card{
   position:relative;background:var(--paper-2);border:2.5px solid var(--ink);
   border-radius:16px 7px 14px 8px / 8px 15px 7px 16px;
@@ -425,6 +456,7 @@ h1.title .owner{color:var(--accent);display:inline-block;transform:rotate(-1.2de
   .masthead{padding-top:26px}
   .brand-mark{width:56px;height:56px}
   .feed{grid-template-columns:minmax(0,1fr)}
+  .card-fill{display:none}          /* 单列时没有空位，不必补卡 */
   .modal{padding:32px 22px 26px}
   .m-title{font-size:22px}
   .mast-note{font-size:14px;max-width:100%}
@@ -1517,6 +1549,32 @@ function renderStats(){
   $("#updTime").textContent = FEED.updated;
 }
 
+/* 取当前网格的真实列数：auto-fill 会随窗口宽度变，不能写死 2 列 */
+function feedCols(){
+  const s = getComputedStyle($("#feed")).gridTemplateColumns;
+  if(!s || s === "none") return 1;
+  return s.split(/\s+/).filter(Boolean).length || 1;
+}
+function escText(s){
+  return String(s == null ? "" : s).replace(/[&<>"]/g,
+    c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+/* 只作版式说明，不冒充资讯、不进右侧速览与阅读档案 */
+function fillCardHtml(n, span){
+  const d = today();
+  const cat = state.filter === "all" ? "全部三类" : CATS[state.filter].name;
+  return `
+  <div class="card-fill" style="grid-column:span ${span}" aria-hidden="true">
+    <span class="cf-tag">本 期 说 明</span>
+    <div class="cf-title">${escText(d.label)}</div>
+    <p>${escText(d.note)}</p>
+    <div class="cf-rule"></div>
+    <div class="cf-foot">当前「${escText(cat)}」共 ${n} 条，每条都能点开看详情与原文。<br>
+      点上方分类标签或「往期」切换其它内容。</div>
+    <span class="cf-mark"></span>
+  </div>`;
+}
+
 function renderFeed(){
   const items = today().items.filter(i => state.filter === "all" || i.cat === state.filter);
   const box = $("#feed");
@@ -1541,6 +1599,13 @@ function renderFeed(){
       </div>
     </article>`;
   }).join("");
+  /* 补齐最后一行的空位：列数变化时由 resize 监听重算 */
+  const cols = feedCols();
+  window.__feedCols = cols;
+  if(cols > 1){
+    const rest = items.length % cols;
+    if(rest) box.insertAdjacentHTML("beforeend", fillCardHtml(items.length, cols - rest));
+  }
   $$("#feed .card").forEach(el => {
     el.addEventListener("click", () => openDetail(el.dataset.id));
   });
@@ -1703,6 +1768,15 @@ function toggleFav(id){
 /* ============================================================
    交互
    ============================================================ */
+/* 窗口宽度变化会改变 auto-fill 的列数，列数变了就重排补卡 */
+let feedResizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(feedResizeTimer);
+  feedResizeTimer = setTimeout(() => {
+    if(feedCols() !== window.__feedCols) renderFeed();
+  }, 180);
+});
+
 $$("#tabs .tab").forEach(t => {
   t.addEventListener("click", () => {
     $$("#tabs .tab").forEach(x => x.classList.remove("on"));

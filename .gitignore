@@ -7,6 +7,9 @@ _*.html
 _*.js
 _syntax*.js
 
+# Skill 便携压缩包（本地交付用，不发布到 Pages）
+dist/
+
 # 系统文件
 Thumbs.db
 .DS_Store
